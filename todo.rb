@@ -13,7 +13,8 @@ end
 
 before do
   session[:lists] ||= []
-  session[:number] ||= 0
+  session[:list_number] ||= 0
+  session[:todo_number] ||= 0
 end
 
 helpers do
@@ -35,6 +36,20 @@ helpers do
 
   def list_class(list)
     "complete" if list_completed?(list)
+  end
+
+  def sort_lists(lists, &block)
+    complete_lists, incomplete_lists = lists.partition { |list| list_completed?(list) }
+
+    incomplete_lists.each(&block)
+    complete_lists.each(&block)
+  end
+
+  def sort_todos(todos, &block)
+    complete_todos, incomplete_todos = todos.partition { |todo| todo[:completed] }
+
+    incomplete_todos.each(&block)
+    complete_todos.each(&block)
   end
 end
 
@@ -83,10 +98,10 @@ post '/lists' do
     session[:error] = error
     erb :new_list, layout: :layout
   else
-    id = session[:number]
+    id = session[:list_number]
     session[:lists] << { name: list_name, todos: [], id: id }
     session[:success] = 'The list has been created.'
-    session[:number] += 1
+    session[:list_number] += 1
     redirect '/lists'
   end
 end
@@ -131,8 +146,10 @@ post '/lists/:list_id/todos' do
     session[:error] = error
     erb :show, layout: :layout
   else
-    @list[:todos] << { name: text, completed: false }
+    id = session[:todo_number]
+    @list[:todos] << { name: text, id: id, completed: false }
     session[:success] = "You added a todo to #{@list[:name]}."
+    session[:todo_number] += 1
     redirect "/lists/#{@list_id}"
   end
 end
@@ -153,9 +170,9 @@ post '/lists/:list_id/todos/:todo_id' do
   @list_id = params[:list_id].to_i
   todo_id = params[:todo_id].to_i
   @list = session[:lists].select { |list| list[:id] == @list_id }.first
+  todo = @list[:todos].select { |todo| todo[:id] == todo_id}.first
 
   is_completed = params[:completed] == 'true'
-  todo = @list[:todos][todo_id]
   todo[:completed] = is_completed
   session[:success] = "Todo has been updated."
 
