@@ -1,11 +1,13 @@
 <ul id="lists">
   <% @lists.each do |list| %>
-    <li>
-      <a href="">
+  <li class="<%= list_class(list) %>">
+      <a href="/lists/<%= list[:id] %>">
         <h2><%= list[:name] %></h2>
-        <p><%= list[:todos].size %></p>
+        <p><%= active_todos(list) %> / <%= todos_count(list) %></p>
       </a>
   <% end %>
 </ul>
 
-<a href="/lists/new">Create New List</a>
+<% content_for :header_links do %>
+  <a class="add" href="/lists/new">Create New List</a>
+<% end %>
