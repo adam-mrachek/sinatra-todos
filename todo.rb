@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
 require 'sinatra'
-require 'sinatra/reloader'
+require 'sinatra/reloader' if development?
 require 'tilt/erubis'
 require 'sinatra/content_for'
-require 'pry'
 
 configure do
   enable :sessions
   set :sessions_secret, 'secret'
+  # set :erb, :escape_html => true
 end
 
 before do
