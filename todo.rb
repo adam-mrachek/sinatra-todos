@@ -139,10 +139,14 @@ patch '/lists/:id' do
 end
 
 # Delete todo list
-delete '/lists/:id' do
+post '/lists/:id/delete' do
   session[:lists].delete_if { |list| list[:id] == params[:id].to_i }
-  session[:success] = "The list has been deleted."
-  redirect '/lists'
+  if env["HTTP_X_REQUESTED_WITH"] == "XMLHttpRequest"
+    "/lists"
+  else
+    session[:success] = "The list has been deleted."
+    redirect '/lists'
+  end
 end
 
 # Add a todo to a todo list
@@ -169,9 +173,13 @@ post '/lists/:list_id/todos/:todo_id/delete' do
   @todo_id = params[:todo_id].to_i
   @list = load_list(@list_id)
   @list[:todos].delete_if { |todo| todo[:id] == @todo_id }
-  session[:success] = "Todo deleted."
 
-  redirect "/lists/#{@list_id}"
+  if env["HTTP_X_REQUESTED_WITH"] == "XMLHttpRequest"
+    status
+  else
+    session[:success] = "Todo deleted."
+    redirect "/lists/#{@list_id}"
+  end
 end
 
 # Update todo completion status
