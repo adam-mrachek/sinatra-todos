@@ -4,11 +4,12 @@ require 'sinatra'
 require 'sinatra/reloader' if development?
 require 'tilt/erubis'
 require 'sinatra/content_for'
+require 'pry'
 
 configure do
   enable :sessions
   set :sessions_secret, 'secret'
-  # set :erb, :escape_html => true
+  set :erb, :escape_html => true
 end
 
 before do
@@ -68,6 +69,14 @@ def error_for_todo_name(text)
   end
 end
 
+def load_list(list_id)
+  list = session[:lists].select { |list| list[:id] == @list_id }.first
+  return list if list
+
+  session[:error] = "The requested list was not found."
+  redirect "/lists"
+end
+
 get '/' do
   redirect '/lists'
 end
@@ -86,7 +95,7 @@ end
 # Render single todo list
 get '/lists/:id' do
   @list_id = params[:id].to_i
-  @list = session[:lists].select { |list| list[:id] == @list_id }.first
+  @list = load_list(@list_id)
   erb :show, layout: :layout
 end
 
@@ -109,7 +118,7 @@ end
 # Edit existing todo list
 get '/lists/:id/edit' do
   @list_id = params[:id].to_i
-  @list = session[:lists].select { |list| list[:id] == @list_id }.first
+  @list = load_list(@list_id)
   erb :edit, layout: :layout
 end
 
@@ -117,7 +126,7 @@ end
 patch '/lists/:id' do
   list_name = params[:list_name].strip
   @list_id = params[:id].to_i
-  @list = session[:lists].select { |list| list[:id] == @list_id }.first
+  @list = load_list(@list_id)
 
   if (error = error_for_list_name(list_name))
     session[:error] = error
@@ -140,7 +149,7 @@ end
 post '/lists/:list_id/todos' do
   @list_id = params[:list_id].to_i
   text = params[:todo].strip
-  @list = session[:lists].select { |list| list[:id] == @list_id }.first
+  @list = load_list(@list_id)
 
   if (error = error_for_todo_name(text))
     session[:error] = error
@@ -158,8 +167,8 @@ end
 post '/lists/:list_id/todos/:todo_id/delete' do
   @list_id = params[:list_id].to_i
   @todo_id = params[:todo_id].to_i
-  @list = session[:lists].select { |list| list[:id] == @list_id }.first
-  @list[:todos].delete_at(@todo_id)
+  @list = load_list(@list_id)
+  @list[:todos].delete_if { |todo| todo[:id] == @todo_id }
   session[:success] = "Todo deleted."
 
   redirect "/lists/#{@list_id}"
@@ -169,7 +178,7 @@ end
 post '/lists/:list_id/todos/:todo_id' do
   @list_id = params[:list_id].to_i
   todo_id = params[:todo_id].to_i
-  @list = session[:lists].select { |list| list[:id] == @list_id }.first
+  @list = load_list(@list_id)
   todo = @list[:todos].select { |todo| todo[:id] == todo_id}.first
 
   is_completed = params[:completed] == 'true'
@@ -182,7 +191,7 @@ end
 # Mark all todos on a list as completed
 post '/lists/:list_id/complete' do
   @list_id = params[:list_id].to_i
-  @list = session[:lists].select { |list| list[:id] == @list_id }.first
+  @list = load_list(@list_id)
   @list[:todos].each { |todo| todo[:completed] = true }
   session[:success] = "You have marked all todos as completed."
 
