@@ -7,6 +7,7 @@ ruby '3.0.2'
 gem 'erubis'
 gem 'sinatra'
 gem 'sinatra-contrib'
+gem 'pg'
 
 group :production do
   gem 'puma'
