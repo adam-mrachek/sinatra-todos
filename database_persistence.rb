@@ -2,7 +2,11 @@ require 'pg'
 
 class DatabasePersistence
   def initialize(logger)
-    @db = PG.connect(dbname: 'todos')
+    @db = if Sinatra::Base.production?
+            PG.connect(ENV['DATABASE_URL'])
+          else
+            PG.connect(dbname: 'todos')
+          end
     @logger = logger
   end
 
@@ -12,19 +16,39 @@ class DatabasePersistence
   end
 
   def find_list(id)
-    sql = "SELECT * FROM lists WHERE id = $1"
+    sql = <<~SQL
+    SELECT lists.*, 
+      COUNT(todos.id) AS todos_count,
+      COUNT(NULLIF(todos.completed, true)) AS todos_remaining
+      FROM lists
+      LEFT JOIN todos
+      ON lists.id = todos.list_id
+      WHERE lists.id = $1
+      GROUP BY lists.id
+      ORDER BY todos_remaining DESC;
+    SQL
     result = query(sql, id)
 
     tuple = result.first
-    {id: tuple["id"], name: tuple["name"], todos: get_todos(id)}
+    tuple_to_list_hash(tuple)
   end
 
   def all_lists
-    sql = "SELECT * FROM lists"
+    sql = <<~SQL
+      SELECT lists.*, 
+        COUNT(todos.id) AS todos_count,
+        COUNT(NULLIF(todos.completed, true)) AS todos_remaining
+        FROM lists
+        LEFT JOIN todos
+        ON lists.id = todos.list_id
+        GROUP BY lists.id
+        ORDER BY todos_remaining DESC;
+    SQL
+
     result = query(sql)
+
     result.map do |tuple|
-      id = tuple["id"].to_i
-      {id: id, name: tuple["name"], todos: get_todos(id)}
+      tuple_to_list_hash(tuple)
     end
   end
 
@@ -63,14 +87,20 @@ class DatabasePersistence
     query(sql, true, list_id)
   end
 
-  private
-
   def get_todos(id)
-    todos = []
     sql = "SELECT * FROM todos WHERE list_id = $1"
     result = query(sql, id)
     result.map do |tuple|
       {id: tuple["id"].to_i, name: tuple["name"], completed: tuple["completed"] == 't'}
     end
+  end
+
+  def tuple_to_list_hash(tuple)
+    {
+      id: tuple["id"].to_i,
+      name: tuple["name"],
+      todos_count: tuple["todos_count"].to_i,
+      todos_remaining: tuple["todos_remaining"].to_i
+    }
   end
 end

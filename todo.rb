@@ -24,15 +24,7 @@ end
 
 helpers do
   def list_completed?(list)
-    list[:todos].all? { |todo| todo[:completed] } && list[:todos].size > 0
-  end
-
-  def active_todos(list)
-    list[:todos].count { |todo| !todo[:completed] }
-  end
-
-  def todos_count(list)
-    list[:todos].size
+    list[:todos_count] > 0 && list[:todos_remaining] == 0
   end
 
   def todo_class(todo)
@@ -100,6 +92,7 @@ end
 get '/lists/:id' do
   @list_id = params[:id].to_i
   @list = load_list(@list_id)
+  @todos = @storage.get_todos(@list_id)
   erb :show, layout: :layout
 end
 
